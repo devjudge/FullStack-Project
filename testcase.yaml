@@ -1,0 +1,118 @@
+- config:
+  - testset: "Board API Test"
+  - timeout: 60
+
+
+- test:
+  - name: "Login API: Invalid Credentials Test 1"
+  - url: "/api/login/"
+  - method: "POST"
+  - group: "Test Login API"
+  - body: '{ "username": "abhishek", "password": "mYSuperSecretPasswoRd"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [404]
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Login API: OnBoard Login Credentials Test 1"
+  - url: "/api/signup/"
+  - method: "POST"
+  - group: "Test Login API"
+  - body: '{ "username": "abhishek","email": "qew4q@ds.dd","password": "mYSuperSecretPasswoRd"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "id",  test: "exists"}
+      - extract_test: {jsonpath_mini: "username",  test: "exists"}
+      - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: "1"}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Login API: OnBoard Login Credentials Test 1"
+  - url: "/api/signup/"
+  - method: "POST"
+  - group: "Test Login API"
+  - body: '{ "username": "randomUser","email": "qew2q@ds.dd","password": "mYSuperPasswoRd"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "id",  test: "exists"}
+      - extract_test: {jsonpath_mini: "username",  test: "exists"}
+      - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: "2"}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Invalid Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - body: '{"board_id": "computer-science","name": "Computer Science"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [401]
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Login API: Valid Credentials Test 1"
+  - url: "/api/login/"
+  - method: "POST"
+  - group: "Test Login API"
+  - body: '{"username": "abhishek", "password": "mYSuperSecretPasswoRd"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [200]
+  - validators:
+      - extract_test: {jsonpath_mini: "id",  test: "exists"}
+      - extract_test: {jsonpath_mini: "username",  test: "exists"}
+      - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: "1"}
+
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "abhishek"
+  - auth_password: "mYSuperSecretPasswoRd"
+  - body: '{"board_id": "science","name": "Science"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "science"}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - body: '{"board_id": "computer-science","name": "Computer Science"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "computer-science"}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "abhishek"
+  - auth_password: "mYSuperSecretPasswoRd"
+  - body: '{"board_id": "techies-corner","name": "Technology"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "techies-corner"}
+

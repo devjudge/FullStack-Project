@@ -3,11 +3,14 @@ from __future__ import unicode_literals
 
 import json
 import uuid
+from datetime import datetime
 
+from django.contrib.auth import authenticate
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.http import HttpResponse, Http404, JsonResponse
 from django.shortcuts import render, get_object_or_404
-
+from django.db.models import Q
 # Create your views here.
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
@@ -15,106 +18,154 @@ from rest_framework.views import APIView
 from rest_framework import status
 import logging
 
-from restapi.models import Board, Board_Thread, Thread_Comment, User_Detail, UserBoardMapping
-from restapi.serializers import serializer_register
+from restapi.models import Board, Board_Thread, Thread_Comment, UserBoardMapping
 
 logger = logging.getLogger(__name__)
 
 
-def signup(request):
-    print(request.path)
-    data = JSONParser().parse(request)
-    data_serialize = serializer_register(data=data)
+class Register(APIView):
 
-    if data_serialize.is_valid():
-        data_serialize.save()
-        user = User_Detail.objects.get(username=data_serialize.data['username'], email=data_serialize.data['email'],
-                                       password=data_serialize.data['password'])
+    def post(self, request):
+        username = request.data.get('username', None)
+        password = request.data.get('password', None)
+        email = request.data.get('email', None)
 
-        print("New User created as {}".format(user.email))
-        data = {
-            "id": data_serialize.data['id'],
-            "username": data_serialize.data['username'],
-            "email": data_serialize.data['email']
-        }
-        return JsonResponse(data, status=status.HTTP_201_CREATED)
+        user = User(
+            username=username,
+            password=password,
+            email=email,
+            last_login=datetime.now()
+        )
 
-    return JsonResponse({"status": "failure",
-                         "reason": data_serialize.errors}, status=status.HTTP_400_BAD_REQUEST)
+        user.set_password(password)
+        user.save()
 
+        if user:
+            payload = {
+                'id': user.id,
+                'username': user.username,
+            }
 
-def login(request):
-    print(request.path)
-    data = json.loads(request.body.decode("utf-8"))
-
-    try:
-        email = data.get('email', None)
-        password = data.get('password', None)
-
-        if email and password:
-            try:
-                result = get_object_or_404(User_Detail, email=email, password=password)
-                User_Detail.objects.filter(email=result.email, password=result.password).update(
-                    auth_token=uuid.uuid4().hex)
-
-                obj = User_Detail.objects.get(email=email)
-
-            except Http404 as e:
-                error = {"status": "failure", "reason": str(e)}
-                return JsonResponse(error, status=status.HTTP_404_NOT_FOUND)
-
-            res = {"auth_token": obj.auth_token}
-            return JsonResponse(res, status=status.HTTP_201_CREATED)
-
-        res = {"status": "failure"}
-        return JsonResponse(res, status=status.HTTP_400_BAD_REQUEST)
-
-    except Exception as e:
-        error = {"status": "failure", "reason": str(e)}
-        return JsonResponse(error, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                payload,
+                status=201,
+                content_type="application/json"
+            )
+        else:
+            return Response(
+                json.dumps({'Error': "Error in signup"}),
+                status=400,
+                content_type="application/json"
+            )
 
 
-def logout(request):
-    try:
-        auth_token = request.META['HTTP_AUTH_TOKEN']
-        print(auth_token)
-        invalidate_token = User_Detail.objects.get(auth_token=auth_token)
-        invalidate_token.auth_token = None
-        invalidate_token.save()
+class Login(APIView):
 
-        return JsonResponse({'detail': "Logged out"}, status=status.HTTP_202_ACCEPTED)
+    def post(self, request):
+        if not request.data:
+            return Response({'Error': "Please provide username/password"}, status=400)
 
-    except Exception as e:
-        return JsonResponse({"error": ["Token does not exist!"]}, status=status.HTTP_400_BAD_REQUEST)
+        username = request.data.get('username', None)
+        password = request.data.get('password', None)
+        if authenticate(username=username, password=password):
+            user = User.objects.get(username=username)
+        else:
+            return Response({'Error': "Invalid username/password"}, status=status.HTTP_404_NOT_FOUND)
+        if user:
+            payload = {
+                'id': user.id,
+                'username': user.username,
+            }
+
+            return Response(
+                payload,
+                status=status.HTTP_200_OK,
+                content_type="application/json"
+            )
+        else:
+            return Response(
+                json.dumps({'Error': "Invalid credentials"}),
+                status=400,
+                content_type="application/json"
+            )
 
 
 class CreateBoard(APIView):
     def post(self, request):
-        data = JSONParser().parse(request)
-        unique_id = data.get('board_id', None)
-        created_by = data.get('created_by', None)
-        name = data.get('name', None)
+        if request.user.is_authenticated:
+            print(request.user.id)
+            data = JSONParser().parse(request)
+            board_id = data.get('board_id', None)
+            name = data.get('name', None)
+            created_by = request.user.id
 
-        if not created_by or not name:
-            return Response({'ERROR': 'Please provide both username and password'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            if not name:
+                return Response({'ERROR': 'Please provide Name of the Board'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        if Board.objects.filter(name=name).exists():
-            return JsonResponse({'ERROR': "Board Already registered! "},
-                                status=status.HTTP_409_CONFLICT)
+            if Board.objects.filter(name=name).exists():
+                return JsonResponse({'ERROR': "Board Already registered! "},
+                                    status=status.HTTP_409_CONFLICT)
 
-        if not User_Detail.objects.filter(username=created_by).exists():
-            return JsonResponse({'ERROR': "Username is not registered! "},
-                                status=status.HTTP_404_NOT_FOUND)
+            user_id = User.objects.get(id=created_by)
+            board = Board(unique_id=board_id, created_by=user_id, name=name)
+            board.save()
+            member = UserBoardMapping(user=user_id, board=board)
+            member.save()
 
-        username = User_Detail.objects.get(username=created_by)
-        board = Board(unique_id=unique_id, created_by=username, name=name)
-        board.save()
+            res = {'board-id': board_id}
+            return JsonResponse(res, status=status.HTTP_201_CREATED)
 
-        res = {'username': created_by}
-        return JsonResponse(res, status=status.HTTP_201_CREATED)
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=status.HTTP_401_UNAUTHORIZED,
+                content_type="application/json"
+            )
 
 
+class JoinBoard(APIView):
+    def post(self, request):
+        if request.user.is_authenticated:
+            data = JSONParser().parse(request)
+            board_name = data.get('board_name', None)
+
+            try:
+                board_id = get_object_or_404(Board, name=board_name)
+            except Board.DoesNotExist:
+                raise Http404
+
+            user_id = request.user.id
+            user_id = User.objects.get(id=user_id)
+            membership = UserBoardMapping(user=user_id, board=board_id, user_type='member')
+            membership.save()
+
+            res = {'board-name': board_id.id}
+            return JsonResponse(res, status=status.HTTP_201_CREATED)
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
+
+
+class GetBoard(APIView):
+    def get(self, request):
+        if request.user.is_authenticated:
+            board = Board.objects.select_related('created_by__username', 'created_by__id')
+            res = board.values('unique_id', 'name', 'created_by__username', 'created_by__id')
+            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
+
+
+#
 class CreateThread(APIView):
     def post(self, request):
         data = JSONParser().parse(request)
