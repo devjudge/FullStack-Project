@@ -165,7 +165,39 @@ class GetBoard(APIView):
             )
 
 
-#
+class GetMyBoard(APIView):
+    def get(self, request):
+        if request.user.is_authenticated:
+            board = UserBoardMapping.objects.all().filter(user_id=request.user.id).select_related('board__unique_id',
+                                                                                                  'board__name')
+            res = board.values('id', 'board__unique_id', 'board__name', 'user_type')
+            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
+
+
+class BoardMembers(APIView):
+    def get(self, request, unique_id):
+        if request.user.is_authenticated:
+            board_id = Board.objects.get(unique_id=unique_id)
+            board = UserBoardMapping.objects.all().filter(board_id=board_id).select_related('board__unique_id',
+                                                                                            'board__name')
+            res = board.values('id', 'board__unique_id', 'board__name', 'user_type')
+            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
+
+
 class CreateThread(APIView):
     def post(self, request):
         data = JSONParser().parse(request)

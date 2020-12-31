@@ -28,6 +28,8 @@ urlpatterns = [
     url(r'^api/board/create/', views.CreateBoard.as_view()),
     url(r'^api/board/join/', views.JoinBoard.as_view()),
     url(r'^api/boards/', views.GetBoard.as_view()),
+    url(r'^api/myboard/', views.GetMyBoard.as_view()),
+    url(r'^api/board/(?P<unique_id>[-\w]+)/$', views.BoardMembers.as_view()),
 
     # url(r'^users/board/(?P<pk>[0-9]+)/$', views.GetUserUsingBoardId.as_view()),
 
