@@ -1,0 +1,37 @@
+- config:
+  - testset: "Board API Test"
+  - timeout: 60
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Get specific Board Detail Test 1"
+  - url: "/api/board/science/"
+  - method: "GET"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - headers: {Content-Type: application/json}
+  - expected_status: [200]
+  - validators:
+      - extract_test: {jsonpath_mini: "boards",  test: "exists"}
+      - compare: {jmespath: 'boards[1].user_type', comparator: 'eq', expected: 'member' }
+      - compare: {jmespath: 'boards[0].board__unique_id', comparator: 'eq', expected: 'science' }
+      - compare: {jmespath: 'boards[0].id', comparator: 'eq', expected: 1 }
+      - compare: {jmespath: 'boards[0].board__name', comparator: 'eq', expected: 'Science' }
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Get specific Board Detail Test 2"
+  - url: "/api/board/hindi/"
+  - method: "GET"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - headers: {Content-Type: application/json}
+  - expected_status: [200]
+  - validators:
+      - extract_test: {jsonpath_mini: "boards",  test: "exists"}
+      - compare: {jmespath: 'boards[0].user_type', comparator: 'eq', expected: 'moderator' }
+      - compare: {jmespath: 'boards[0].board__unique_id', comparator: 'eq', expected: 'hindi' }
+      - compare: {jmespath: 'boards[0].id', comparator: 'eq', expected: 8 }
+      - compare: {jmespath: 'boards[0].board__name', comparator: 'eq', expected: 'Hindi' }

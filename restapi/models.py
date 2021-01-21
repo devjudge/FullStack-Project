@@ -40,12 +40,12 @@ class Board_Thread(models.Model):
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     tag = models.CharField(max_length=20, null=False)
-    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="thread_creator")
     status = models.CharField(max_length=10, choices=STATUS, default='open')
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name="thread_creator")
 
 
 class Thread_Comment(models.Model):
     id = models.AutoField(primary_key=True)
     thread_id = models.ForeignKey(Board_Thread, on_delete=models.CASCADE, related_name="thread_comment")
     text = models.CharField(max_length=200, null=False)
-    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name="author_name")
+    commented_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comment_creator")

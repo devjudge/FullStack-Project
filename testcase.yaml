@@ -116,3 +116,33 @@
       - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
       - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "techies-corner"}
 
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/join/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - body: '{"board_name": "Science"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: '1'}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/join/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "abhishek"
+  - auth_password: "mYSuperSecretPasswoRd"
+  - body: '{"board_name": "Computer Science"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: '2'}
