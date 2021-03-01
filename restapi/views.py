@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import json
 import uuid
 from datetime import datetime
+from django.core import serializers
 
 from django.contrib.auth import authenticate
 from django.contrib.auth.decorators import login_required
@@ -140,7 +141,7 @@ class JoinBoard(APIView):
             membership = UserBoardMapping(user=user_id, board=board_id, user_type='member')
             membership.save()
 
-            res = {'board-name': board_id.id}
+            res = {'board-id': board_id.id}
             return JsonResponse(res, status=status.HTTP_201_CREATED)
         else:
             return Response(
@@ -155,7 +156,8 @@ class GetBoard(APIView):
         if request.user.is_authenticated:
             board = Board.objects.select_related('created_by__username', 'created_by__id')
             res = board.values('unique_id', 'name', 'created_by__username', 'created_by__id')
-            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_201_CREATED)
+            data = {'boards': list(res)}
+            return Response(data, status=status.HTTP_200_OK)
 
         else:
             return Response(
@@ -171,7 +173,7 @@ class GetMyBoard(APIView):
             board = UserBoardMapping.objects.all().filter(user_id=request.user.id).select_related('board__unique_id',
                                                                                                   'board__name')
             res = board.values('id', 'board__unique_id', 'board__name', 'user_type')
-            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_201_CREATED)
+            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_200_OK)
 
         else:
             return Response(
@@ -184,11 +186,15 @@ class GetMyBoard(APIView):
 class BoardMembers(APIView):
     def get(self, request, unique_id):
         if request.user.is_authenticated:
-            board_id = Board.objects.get(unique_id=unique_id)
+            try:
+                board_id = get_object_or_404(Board, unique_id=unique_id)
+            except Board.DoesNotExist:
+                raise Http404
             board = UserBoardMapping.objects.all().filter(board_id=board_id).select_related('board__unique_id',
                                                                                             'board__name')
             res = board.values('id', 'board__unique_id', 'board__name', 'user_type')
-            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_201_CREATED)
+            print(type(res))
+            return JsonResponse({'boards': list(res)}, safe=False, status=status.HTTP_200_OK)
 
         else:
             return Response(
@@ -200,62 +206,141 @@ class BoardMembers(APIView):
 
 class CreateThread(APIView):
     def post(self, request):
-        data = JSONParser().parse(request)
+        if request.user.is_authenticated:
+            data = JSONParser().parse(request)
 
-        title = data.get('title', None)
-        description = data.get('description', None)
-        board_id = data.get('board_id', None)
-        creator = data.get('creator', None)
-        tag = data.get('tag', None)
+            title = data.get('title', None)
+            description = data.get('description', None)
+            board_id = data.get('board_id', None)
+            tag = data.get('tag', None)
+            creator = request.user.id
 
-        if not title or not description:
-            return Response({'ERROR': 'Please provide both title and description'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            if not title or not description:
+                return Response({'ERROR': 'Please provide both title and description'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        if not Board.objects.filter(unique_id=board_id).exists():
-            return JsonResponse({'ERROR': "Board does not exists! "},
-                                status=status.HTTP_404_NOT_FOUND)
+            if not Board.objects.filter(unique_id=board_id).exists():
+                return JsonResponse({'ERROR': "Board does not exists! "},
+                                    status=status.HTTP_404_NOT_FOUND)
 
-        if not User.objects.filter(username=creator).exists():
-            return JsonResponse({'ERROR': "Username is not registered! "},
-                                status=status.HTTP_404_NOT_FOUND)
+            if Board_Thread.objects.filter(title=title).exists():
+                return JsonResponse({'ERROR': "Thread with same name already exists! "},
+                                    status=status.HTTP_400_BAD_REQUEST)
 
-        board = Board.objects.get(unique_id=board_id)
-        print(board)
-        username = User.objects.get(username=creator)
-        board = Board_Thread(title=title, description=description, board=board, creator=username, tag=tag)
-        board.save()
+            board_pk = Board.objects.get(unique_id=board_id)
+            if UserBoardMapping.objects.filter(board=board_pk, user_type='banned'):
+                return JsonResponse({'ERROR': "User is banned for this Board! "},
+                                    status=status.HTTP_404_NOT_FOUND)
 
-        res = {'thread title': title}
-        return JsonResponse(res, status=status.HTTP_201_CREATED)
+            board = Board.objects.get(unique_id=board_id)
+            print(board)
+            user_id = User.objects.get(id=creator)
+            board = Board_Thread(title=title, description=description, board=board, tag=tag, creator=user_id)
+            board.save()
+
+            res = {'thread title': title}
+            return JsonResponse(res, status=status.HTTP_201_CREATED)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
+
+
+class GetAllThread(APIView):
+
+    def get(self, request, unique_id):
+        if request.user.is_authenticated:
+            board_id = Board.objects.get(unique_id=unique_id)
+
+            thread = Board_Thread.objects.all().filter(board_id=board_id)
+            res = thread.values('id', 'board__unique_id', 'title', 'tag', 'status')
+            return JsonResponse({'threads': list(res)}, safe=False, status=status.HTTP_200_OK)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
+
+
+class CloseThread(APIView):
+
+    def post(self, request):
+        if request.user.is_authenticated:
+            data = JSONParser().parse(request)
+            title = data.get('title', None)
+
+            if not title:
+                return Response({'ERROR': 'Please provide Title'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            if not Board_Thread.objects.filter(title=title).exists():
+                return JsonResponse({'ERROR': "Thread with name does not exists! "},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+            if not UserBoardMapping.objects.get(user=request.user.is_authenticated, user_type='moderator'):
+                return JsonResponse({'ERROR': "User is banned for this Board! "},
+                                    status=status.HTTP_404_NOT_FOUND)
+
+            thread = Board_Thread.objects.filter(title=title).update(status='close')
+            print(thread)
+            return JsonResponse({'threads': thread}, status=status.HTTP_200_OK)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
 
 
 class Comment(APIView):
 
     def post(self, request):
-        data = JSONParser().parse(request)
-        text = data.get('text', None)
-        thread_title = data.get('thread_title', None)
-        author = data.get('author', None)
+        if request.user.is_authenticated:
+            data = JSONParser().parse(request)
+            text = data.get('text', None)
+            thread_title = data.get('thread_title', None)
+            commented_by = request.user.id
 
-        if not text or not thread_title:
-            return Response({'ERROR': 'Please provide both text and thread_id'},
-                            status=status.HTTP_400_BAD_REQUEST)
+            if not text or not thread_title:
+                return Response({'ERROR': 'Please provide both text and thread_id'},
+                                status=status.HTTP_400_BAD_REQUEST)
 
-        if not Board_Thread.objects.filter(title=thread_title).exists():
-            return JsonResponse({'ERROR': "Thread does not exists! "},
-                                status=status.HTTP_404_NOT_FOUND)
+            if not Board_Thread.objects.filter(title=thread_title).exists():
+                return JsonResponse({'ERROR': "Thread does not exists! "},
+                                    status=status.HTTP_404_NOT_FOUND)
 
-        if not User.objects.filter(username=author).exists():
-            return JsonResponse({'ERROR': "Username is not registered! "},
-                                status=status.HTTP_404_NOT_FOUND)
+            title = Board_Thread.objects.get(title=thread_title)
+            print(title)
+            user_id = User.objects.get(id=commented_by)
+            com = Thread_Comment(text=text, thread_id=title, commented_by=user_id)
+            com.save()
 
-        title = Board_Thread.objects.get(title=thread_title)
-        print(title)
-        username = User.objects.get(username=author)
+            res = {'comment': text}
+            return JsonResponse(res, status=status.HTTP_201_CREATED)
 
-        com = Thread_Comment(text=text, thread_id=title, author=username)
-        com.save()
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )
 
-        res = {'comment': text}
-        return JsonResponse(res, status=status.HTTP_201_CREATED)
+    def get(self, request, thread_title):
+        if request.user.is_authenticated:
+            thread_id = Board_Thread.objects.get(title=thread_title)
+            comment = Thread_Comment.objects.all().filter(thread_id=thread_id).select_related('board_thread__title',)
+            res = comment.values('id', 'thread_id', 'text')
+            return JsonResponse({'threads': list(res)}, safe=False, status=status.HTTP_200_OK)
+
+        else:
+            return Response(
+                'User needs to LogIn',
+                status=400,
+                content_type="application/json"
+            )

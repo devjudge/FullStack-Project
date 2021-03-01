@@ -1,0 +1,99 @@
+- config:
+  - testset: "Board API Test"
+  - timeout: 60
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "abhishek"
+  - auth_password: "mYSuperSecretPasswoRd"
+  - body: '{"board_id": "mathematics","name": "Mathematics"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "mathematics"}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - body: '{"board_id": "english","name": "English"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "english"}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/create/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "abhishek"
+  - auth_password: "mYSuperSecretPasswoRd"
+  - body: '{"board_id": "hindi","name": "Hindi"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: "hindi"}
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Create Board Test 1"
+  - url: "/api/board/join/"
+  - method: "POST"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - body: '{"board_name": "Mathematics"}'
+  - headers: {Content-Type: application/json}
+  - expected_status: [201]
+  - validators:
+      - extract_test: {jsonpath_mini: "board-id",  test: "exists"}
+      - compare: {jsonpath_mini: "board-id", comparator: "str_eq", expected: '4'}
+
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Get All Board Test 1"
+  - url: "/api/boards/"
+  - method: "GET"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - headers: {Content-Type: application/json}
+  - expected_status: [200]
+  - validators:
+      - extract_test: {jsonpath_mini: "boards",  test: "exists"}
+      - compare: {jmespath: 'boards[0].unique_id', comparator: 'eq', expected: 'science' }
+      - compare: {jmespath: 'boards[1].name', comparator: 'eq', expected: 'Computer Science' }
+      - compare: {jmespath: 'boards[2].created_by__username', comparator: 'eq', expected: 'abhishek' }
+      - compare: {jmespath: 'boards[3].created_by__id', comparator: 'eq', expected: 1 }
+
+- test:
+  - curl_option_fresh_connect: True
+  - name: "Board API: Get MyBoard Test 1"
+  - url: "/api/myboard/"
+  - method: "GET"
+  - group: "Test Board API"
+  - auth_username: "randomUser"
+  - auth_password: "mYSuperPasswoRd"
+  - headers: {Content-Type: application/json}
+  - expected_status: [200]
+  - validators:
+      - extract_test: {jsonpath_mini: "boards",  test: "exists"}
+      - compare: {jmespath: 'boards[0].user_type', comparator: 'eq', expected: 'moderator' }
+      - compare: {jmespath: 'boards[0].id', comparator: 'eq', expected: 2 }
+

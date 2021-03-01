@@ -31,8 +31,10 @@ urlpatterns = [
     url(r'^api/myboard/', views.GetMyBoard.as_view()),
     url(r'^api/board/(?P<unique_id>[-\w]+)/$', views.BoardMembers.as_view()),
 
-    # url(r'^users/board/(?P<pk>[0-9]+)/$', views.GetUserUsingBoardId.as_view()),
-
     url(r'^thread/', views.CreateThread.as_view()),
+    url(r'^close/thread/', views.CloseThread.as_view()),
+    url(r'^threads/(?P<unique_id>[-\w]+)/$', views.GetAllThread.as_view()),
+
     url(r'^comment/', views.Comment.as_view()),
+    path('comments/<str:thread_title>/', views.Comment.as_view()),
 ]
