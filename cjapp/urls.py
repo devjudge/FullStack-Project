@@ -22,6 +22,7 @@ from restapi import views
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
+    path("", views.Index.as_view(), name="home"),
     path("api/signup/", views.Register.as_view(), name="new_user"),
     path("api/login/", views.Login.as_view(), name="login_user"),
 
