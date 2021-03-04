@@ -2,22 +2,18 @@
 from __future__ import unicode_literals
 
 import json
-import uuid
+import logging
 from datetime import datetime
-from django.core import serializers
 
 from django.contrib.auth import authenticate
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import HttpResponse, Http404, JsonResponse
-from django.shortcuts import render, get_object_or_404
-from django.db.models import Q
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404
+from rest_framework import status
 # Create your views here.
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework import status
-import logging
 
 from restapi.models import Board, Board_Thread, Thread_Comment, UserBoardMapping
 
