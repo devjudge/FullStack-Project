@@ -8,38 +8,9 @@
   - url: "/api/login/"
   - method: "POST"
   - group: "Test Login API"
-  - body: '{ "username": "abhishek", "password": "mYSuperSecretPasswoRd"}'
+  - body: '{ "username": "test", "password": "mYSuperSecretPasswoRd"}'
   - headers: {Content-Type: application/json}
   - expected_status: [404]
-
-- test:
-  - curl_option_fresh_connect: True
-  - name: "Login API: OnBoard Login Credentials Test 1"
-  - url: "/api/signup/"
-  - method: "POST"
-  - group: "Test Login API"
-  - body: '{ "username": "abhishek","email": "qew4q@ds.dd","password": "mYSuperSecretPasswoRd"}'
-  - headers: {Content-Type: application/json}
-  - expected_status: [201]
-  - validators:
-      - extract_test: {jsonpath_mini: "id",  test: "exists"}
-      - extract_test: {jsonpath_mini: "username",  test: "exists"}
-      - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: "1"}
-
-
-- test:
-  - curl_option_fresh_connect: True
-  - name: "Login API: OnBoard Login Credentials Test 1"
-  - url: "/api/signup/"
-  - method: "POST"
-  - group: "Test Login API"
-  - body: '{ "username": "randomUser","email": "qew2q@ds.dd","password": "mYSuperPasswoRd"}'
-  - headers: {Content-Type: application/json}
-  - expected_status: [201]
-  - validators:
-      - extract_test: {jsonpath_mini: "id",  test: "exists"}
-      - extract_test: {jsonpath_mini: "username",  test: "exists"}
-      - compare: {jsonpath_mini: "id", comparator: "str_eq", expected: "2"}
 
 
 - test:

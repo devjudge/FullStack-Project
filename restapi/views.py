@@ -24,6 +24,12 @@ from restapi.models import Board, Board_Thread, Thread_Comment, UserBoardMapping
 logger = logging.getLogger(__name__)
 
 
+class Index(APIView):
+    def get(self, request):
+        result="Hello World!"
+        return JsonResponse({'result':"hello world!"})
+
+
 class Register(APIView):
 
     def post(self, request):
@@ -334,7 +340,7 @@ class Comment(APIView):
     def get(self, request, thread_title):
         if request.user.is_authenticated:
             thread_id = Board_Thread.objects.get(title=thread_title)
-            comment = Thread_Comment.objects.all().filter(thread_id=thread_id).select_related('board_thread__title',)
+            comment = Thread_Comment.objects.all().filter(thread_id=thread_id).select_related('board_thread__title', )
             res = comment.values('id', 'thread_id', 'text')
             return JsonResponse({'threads': list(res)}, safe=False, status=status.HTTP_200_OK)
 
